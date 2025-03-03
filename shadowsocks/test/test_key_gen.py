@@ -1,7 +1,7 @@
 import unittest
 import hashlib
 
-from cipher.key_gen import EVP_BytesToKey, HKDF_SHA1
+from shadowsocks.cipher.key_gen import EVP_BytesToKey, HKDF_SHA1
 
 class TestCipherKeyGen(unittest.TestCase):
     def test_EVP_BytesToKey_general(self):
