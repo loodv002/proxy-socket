@@ -1,5 +1,6 @@
 from .CipherBase import CipherBase
 from .AEAD.AEAD_AES_GCM import AEAD_AES_GCM
+from .AEAD.AEAD_CHACHA20_POLY1305 import AEAD_CHACHA20_POLY1305
 
 from typing import Type
 from enum import Enum
@@ -48,17 +49,26 @@ supported_cipher_parameters = {
         cipher          = AEAD_AES_GCM,
         key_size        = 32,
         tag_size        = 16,
+        salt_size       = 16,
+        nonce_size      = 12,
+        chunk_size      = 0x3fff
+    ),
+    'AEAD_CHACHA20_POLY1305': CipherParamerters(
+        cipher_type     = CIPHER_TYPE.AEAD,
+        cipher          = AEAD_CHACHA20_POLY1305,
+        key_size        = 32,
+        tag_size        = 16,
+        salt_size       = 16,
+        nonce_size      = 8,
+        chunk_size      = 0x3fff
+    ),
+    'AEAD_CHACHA20_IETF_POLY1305': CipherParamerters(
+        cipher_type     = CIPHER_TYPE.AEAD,
+        cipher          = AEAD_CHACHA20_POLY1305,
+        key_size        = 32,
+        tag_size        = 16,
         salt_size       = 32,
         nonce_size      = 12,
         chunk_size      = 0x3fff
     ),
-    # 'AEAD_CHACHA20_POLY1305': CipherParamerters(
-    #     cipher_type     = CIPHER_TYPE.AEAD,
-    #     cipher          = AEAD_CHACHA20_POLY1305,
-    #     key_size        = 32,
-    #     tag_size        = 16,
-    #     salt_size       = 32,
-    #     nonce_size      = 12,
-    #     chunk_size      = 0x3fff
-    # ),
 }

@@ -49,15 +49,14 @@ class AEAD_CipherBase(ABC):
         if len(chunk) > self.cipher_parameters.chunk_size: 
             raise ValueError('The given chunk is too large.')
         
-        payload = bytearray()
         chunk_size_bytes = struct.pack('!H', len(chunk))
         
-        payload += self._encrypt(chunk_size_bytes)
+        encrypted_chunk_size = self._encrypt(chunk_size_bytes)
         self.increase_nonce()
-        payload += self._encrypt(chunk)
+        encrypted_payload = self._encrypt(chunk)
         self.increase_nonce()
 
-        return payload
+        return encrypted_chunk_size + encrypted_payload
     
     def decrypt_chunk(self, payload: bytes) -> bytes:
         chunk_size_bytes = payload[: 2 + self.cipher_parameters.tag_size]
