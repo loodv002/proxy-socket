@@ -1,9 +1,10 @@
+from enum import Enum
 import struct
 import socket
 import ipaddress
 import re
 
-class SOCKS5_ADDR_TYPE:
+class SOCKS5_ADDR_TYPE(Enum):
     IPV4   = 0x01
     DOMAIN = 0x03
     IPV6   = 0x04
@@ -14,7 +15,7 @@ def to_socks5_addr(addr_type: SOCKS5_ADDR_TYPE,
                    ip_or_domain: str,
                    port: int) -> bytes:
     
-    addr = struct.pack('B', addr_type)
+    addr = struct.pack('B', addr_type.value)
     
     if addr_type == SOCKS5_ADDR_TYPE.IPV4:
         addr += socket.inet_aton(ip_or_domain)
