@@ -29,3 +29,21 @@ class TestUtilsSocksAddr(unittest.TestCase):
             addr, 
             b'\x04 \x01\r\xb8\x85\xa3\x08\xd3\x13\x19\x8a.\x03psD\x01\x00'
         )
+
+    def test_determine_addr(self):
+        self.assertEqual(
+            socks_addr.determine_addr_type('1.2.3.4'),
+            socks_addr.SOCKS5_ADDR_TYPE.IPV4
+        )
+        self.assertEqual(
+            socks_addr.determine_addr_type('::1'),
+            socks_addr.SOCKS5_ADDR_TYPE.IPV6
+        )
+        self.assertEqual(
+            socks_addr.determine_addr_type('example.com'),
+            socks_addr.SOCKS5_ADDR_TYPE.DOMAIN
+        )
+        self.assertEqual(
+            socks_addr.determine_addr_type('1.2.3.4.5.6'),
+            socks_addr.SOCKS5_ADDR_TYPE.UNKNOWN
+        )

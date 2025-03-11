@@ -1,5 +1,7 @@
 import struct
 import socket
+import ipaddress
+import re
 
 class SOCKS5_ADDR_TYPE:
     IPV4   = 0x01
@@ -25,3 +27,22 @@ def to_socks5_addr(addr_type: SOCKS5_ADDR_TYPE,
     
     return addr
     
+def determine_addr_type(ip_or_domain: str) -> SOCKS5_ADDR_TYPE:
+    domain_pattern = r'^(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$'
+    if (re.match(domain_pattern, ip_or_domain) is not None and
+        len(ip_or_domain) <= 255):
+        
+        return SOCKS5_ADDR_TYPE.DOMAIN
+
+    try:
+        ip_addr = ipaddress.ip_address(ip_or_domain)
+        
+        if isinstance(ip_addr, ipaddress.IPv4Address):
+            return SOCKS5_ADDR_TYPE.IPV4
+        elif isinstance(ip_addr, ipaddress.IPv6Address):
+            return SOCKS5_ADDR_TYPE.IPV6
+        
+    except ValueError:
+        pass
+
+    return SOCKS5_ADDR_TYPE.UNKNOWN
