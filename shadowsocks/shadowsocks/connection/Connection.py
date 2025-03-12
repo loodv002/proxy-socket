@@ -26,40 +26,39 @@ class Connection:
             raise ValueError(f'cipher_name "{cipher_name}" not supported, should be one of {list(supported_cipher_parameters.keys())}')
         
         self.cipher_parameters = supported_cipher_parameters[cipher_name]
+        self.password = password
         
         self.recv_buffer = ByteBuffer()
         self.decryted_buffer = ByteBuffer()
         self.eof = False
 
+        self.uplink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
+        self.downlink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
+
         self._init_socket(SS_addr, SS_port)
-        self._init_ciphers(password, target_addr, target_port)
+        self._init_uplink_cipher()
+        self._send_target_addr(target_addr, target_port)
         
         
     def _init_socket(self, SS_addr: str, SS_port: int):
         self.connection = socket.create_connection((SS_addr, SS_port))
         self.connection.setblocking(False)
 
-    def _init_ciphers(self, password: str, target_addr: str, target_port: str):
-        '''Exchange salts and initicate ciphers.'''
-        self.uplink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
-        self.downlink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
-        
-        uplink_salt = Crypto.Random.get_random_bytes(self.cipher_parameters.salt_size)
-        self.uplink_cipher.init_key(password, uplink_salt)
+    def _init_uplink_cipher(self, salt: bytes = None):
+        uplink_salt = salt or Crypto.Random.get_random_bytes(self.cipher_parameters.salt_size)
+        self.uplink_cipher.init_key(self.password, uplink_salt)
+        self._send_message(AEAD_SaltMessage(self.cipher_parameters, uplink_salt))
 
-        self._send_message(AEAD_SaltMessage(self.cipher_parameters,
-                                            uplink_salt))
-        
+    def _init_downlink_cipher(self, salt: bytes):
+        self.downlink_cipher.init_key(self.password, salt)
+
+    def _send_target_addr(self, target_addr: str, target_port: int):
         addr_type = determine_addr_type(target_addr)
 
         self._send_message(AEAD_AddressMessage(self.cipher_parameters, 
                                                addr_type,
                                                target_addr,
                                                target_port))
-        
-        downlink_salt_message = self._recv_message(AEAD_SaltMessage)
-        
-        self.downlink_cipher.init_key(password, downlink_salt_message.salt)
 
     def _send_message(self, message: MessageBase):
         '''Encrypt and write `message` to socket.'''
@@ -127,14 +126,16 @@ class Connection:
     def recv(self, length: int, timeout: Timeout = None) -> bytes:
         '''Receive decrypted message.
 
+        Note that in non-blocking mode, to return data as soon as possible, at most one extra chunk is received and decrypted.
+
         Arguments:
             length -- the length of message to read
 
         Keyword Arguments:
             timeout -- receive timeout (default: {None})
-            * None: block until receive enough length or connection closed.
-            * 0: non-blocking.
-            * Non-negative float: receive duration in seconds.
+                * None: block until receive enough length or connection closed.
+                * 0: non-blocking.
+                * Non-negative float: receive duration in seconds.
 
         Returns:
             Decrypted message.
@@ -145,8 +146,16 @@ class Connection:
         start_time = time.time()
 
         while len(self.decryted_buffer) < length and not timeout_expired:
-            while (message := self._recv_message(AEAD_PayloadMessage, blocking=blocking)):
+
+            message_type = (AEAD_PayloadMessage 
+                            if self.downlink_cipher.key_initiated
+                            else AEAD_SaltMessage)
+            message = self._recv_message(message_type, blocking=blocking)
+
+            if isinstance(message, AEAD_PayloadMessage):
                 self.decryted_buffer.write(message.chunk)
+            elif isinstance(message, AEAD_SaltMessage):
+                self._init_downlink_cipher(message.salt)
                 
             if not blocking:
                 timeout_expired = (time.time() - start_time) > timeout
