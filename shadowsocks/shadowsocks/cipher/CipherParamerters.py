@@ -44,22 +44,22 @@ supported_cipher_parameters = {
         nonce_size      = 12,
         chunk_size      = 0x3fff
     ),
+    'AEAD_AES_192_GCM': CipherParamerters(
+        cipher_type     = CIPHER_TYPE.AEAD,
+        cipher          = AEAD_AES_GCM,
+        key_size        = 24,
+        tag_size        = 16,
+        salt_size       = 24,
+        nonce_size      = 12,
+        chunk_size      = 0x3fff
+    ),
     'AEAD_AES_256_GCM': CipherParamerters(
         cipher_type     = CIPHER_TYPE.AEAD,
         cipher          = AEAD_AES_GCM,
         key_size        = 32,
         tag_size        = 16,
-        salt_size       = 16,
+        salt_size       = 32,
         nonce_size      = 12,
-        chunk_size      = 0x3fff
-    ),
-    'AEAD_CHACHA20_POLY1305': CipherParamerters(
-        cipher_type     = CIPHER_TYPE.AEAD,
-        cipher          = AEAD_CHACHA20_POLY1305,
-        key_size        = 32,
-        tag_size        = 16,
-        salt_size       = 16,
-        nonce_size      = 8,
         chunk_size      = 0x3fff
     ),
     'AEAD_CHACHA20_IETF_POLY1305': CipherParamerters(
@@ -69,6 +69,17 @@ supported_cipher_parameters = {
         tag_size        = 16,
         salt_size       = 32,
         nonce_size      = 12,
+        chunk_size      = 0x3fff
+    ),
+    
+    # deprecated
+    'AEAD_CHACHA20_POLY1305': CipherParamerters(
+        cipher_type     = CIPHER_TYPE.AEAD,
+        cipher          = AEAD_CHACHA20_POLY1305,
+        key_size        = 32,
+        tag_size        = 16,
+        salt_size       = 32,
+        nonce_size      = 8,
         chunk_size      = 0x3fff
     ),
 }
