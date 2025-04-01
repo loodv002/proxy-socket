@@ -13,13 +13,18 @@ class SSL_Connection:
                  ssl_context: Optional[ssl.SSLContext] = None):
         
         self.eof = False
+
         self.connection = connection
+        self.connection.settimeout(0)
+
         self.downlink_buffer = ssl.MemoryBIO() # conn -> ssl_obj
         self.uplink_buffer = ssl.MemoryBIO() # ssl_obj -> conn
         self.recv_buffer = ByteBuffer() # ssl_obj -> user_app
 
         if ssl_context is None:
             ssl_context = ssl.create_default_context()
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            ssl_context.check_hostname = True
 
         self.ssl_object = ssl_context.wrap_bio(
             incoming=self.downlink_buffer,
@@ -46,8 +51,8 @@ class SSL_Connection:
             
             except ssl.SSLWantReadError: # conn -> ssl_obj
                 if self.connection.eof: break
-
-                downlink_data = self.connection.recv(1024, 0)
+         
+                downlink_data = self.connection.recv(1024)
                 self.downlink_buffer.write(downlink_data)
 
                 if self.connection.eof: self.eof = True
