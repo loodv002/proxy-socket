@@ -170,6 +170,7 @@ class Connection:
         '''
 
         timeout_checker = TimeoutChecker(self.timeout)
+        blocking = self.timeout != 0
 
         if (not self.downlink_cipher.key_initiated 
             and not self._try_init_downlink_cipher(timeout_checker)):
@@ -182,6 +183,7 @@ class Connection:
 
             message = self._recv_message(AEAD_PayloadMessage, blocking=False)
             if message: self.decryted_buffer.write(message.chunk)
+            if not blocking: break
 
         return self.decryted_buffer.read(buffer_size)
             
