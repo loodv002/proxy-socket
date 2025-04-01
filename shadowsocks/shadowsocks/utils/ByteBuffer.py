@@ -43,3 +43,6 @@ class ByteBuffer:
     def __len__(self):
         '''Return length of current buffer.'''
         return len(self._buffer) - self._head
+    
+    def __bool__(self):
+        return len(self) != 0

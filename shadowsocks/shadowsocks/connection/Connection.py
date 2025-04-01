@@ -9,8 +9,8 @@ from ..message.MessageBase import MessageBase
 from ..message.AEAD import *
 from ..utils.ByteBuffer import ByteBuffer
 from ..utils.socks_addr import determine_addr_type
+from ..utils.TimeoutChecker import TimeoutChecker, Timeout
 
-Timeout = Union[None, int]
 
 class Connection:
     def __init__(self, 
@@ -31,6 +31,7 @@ class Connection:
         self.recv_buffer = ByteBuffer()
         self.decryted_buffer = ByteBuffer()
         self.eof = False
+        self.timeout = 0
 
         self.uplink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
         self.downlink_cipher = self.cipher_parameters.cipher(self.cipher_parameters)
@@ -122,48 +123,67 @@ class Connection:
                 self.cipher_parameters,
                 chunk
             ))
-
-    def recv(self, length: int, timeout: Timeout = None) -> bytes:
-        '''Receive decrypted message.
-
-        Note that in non-blocking mode, to return data as soon as possible, at most one extra chunk is received and decrypted.
+    
+    def _try_init_downlink_cipher(self, timeout_checker: TimeoutChecker) -> bool:
+        '''Try receive salt message and init downlink cipher.
 
         Arguments:
-            length -- the length of message to read
+            timeout -- Receive salt timeout.
 
-        Keyword Arguments:
-            timeout -- receive timeout (default: {None})
-                * None: block until receive enough length or connection closed.
-                * 0: non-blocking.
-                * Non-negative float: receive duration in seconds.
+        Raises:
+            socket.timeout -- If timeout expired.
 
         Returns:
-            Decrypted message.
-        '''        
+            Whether cipher initiated successfully.
+        '''
 
-        blocking = timeout is None
-        timeout_expired = False
-        start_time = time.time()
-
-        while len(self.decryted_buffer) < length and not timeout_expired:
-
-            message_type = (AEAD_PayloadMessage 
-                            if self.downlink_cipher.key_initiated
-                            else AEAD_SaltMessage)
-            message = self._recv_message(message_type, blocking=blocking)
-
-            if isinstance(message, AEAD_PayloadMessage):
-                self.decryted_buffer.write(message.chunk)
-            elif isinstance(message, AEAD_SaltMessage):
-                self._init_downlink_cipher(message.salt)
-                
-            if not blocking:
-                timeout_expired = (time.time() - start_time) > timeout
+        blocking = self.timeout != 0
             
-            # No message in buffer and EOF.
-            if self.eof: break
-        
-        return self.decryted_buffer.read(length)
+        while True:
+            message = self._recv_message(AEAD_SaltMessage, blocking=False)
+            if message:
+                self._init_downlink_cipher(message.salt)
+                return True
+            
+            if not blocking:
+                return False
+            elif timeout_checker.timeout_expired():
+                raise socket.timeout
+    
+    def settimeout(self, timeout: Timeout):
+        '''Set socket timeout.
+
+        Arguments:
+            timeout -- 0 for non-blocking, non-negtive numeric for timeout in seconds.
+        '''
+
+        self.timeout = timeout
+    
+    def recv(self, buffer_size: int) -> bytes:
+        '''Receive data for at most `buffer_size` bytes.
+
+        Arguments:
+            buffer_size -- Maximum received data length.
+
+        Returns:
+            The received data.
+        '''
+
+        timeout_checker = TimeoutChecker(self.timeout)
+
+        if (not self.downlink_cipher.key_initiated 
+            and not self._try_init_downlink_cipher(timeout_checker)):
+            # Non-blocking mode and salt not received.
+            return b''
+
+        while not self.decryted_buffer and not self.eof:
+            if timeout_checker.timeout_expired():
+                raise socket.timeout()
+
+            message = self._recv_message(AEAD_PayloadMessage, blocking=False)
+            if message: self.decryted_buffer.write(message.chunk)
+
+        return self.decryted_buffer.read(buffer_size)
             
     def close(self):
         self.connection.close()
