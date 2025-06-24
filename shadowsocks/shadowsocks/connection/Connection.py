@@ -45,7 +45,7 @@ class Connection:
         self.connection = socket.create_connection((SS_addr, SS_port))
         self.connection.setblocking(False)
 
-    def _init_uplink_cipher(self, salt: bytes = None):
+    def _init_uplink_cipher(self, salt: Optional[bytes] = None):
         uplink_salt = salt or Crypto.Random.get_random_bytes(self.cipher_parameters.salt_size)
         self.uplink_cipher.init_key(self.password, uplink_salt)
         self._send_message(AEAD_SaltMessage(self.cipher_parameters, uplink_salt))
@@ -141,7 +141,7 @@ class Connection:
             
         while True:
             message = self._recv_message(AEAD_SaltMessage, blocking=False)
-            if message:
+            if isinstance(message, AEAD_SaltMessage):
                 self._init_downlink_cipher(message.salt)
                 return True
             
@@ -182,7 +182,8 @@ class Connection:
                 raise socket.timeout()
 
             message = self._recv_message(AEAD_PayloadMessage, blocking=False)
-            if message: self.decryted_buffer.write(message.chunk)
+            if isinstance(message, AEAD_PayloadMessage): 
+                self.decryted_buffer.write(message.chunk)
             if not blocking: break
 
         return self.decryted_buffer.read(buffer_size)

@@ -4,7 +4,9 @@ from ..utils.ByteBuffer import ByteBuffer
 import ssl
 import time
 
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, TypeVar
+
+SSL_Fn_Return_Type = TypeVar('SSL_Fn_Return_Type')
 
 class SSL_Connection:
     def __init__(self, 
@@ -35,10 +37,10 @@ class SSL_Connection:
         self._ssl_io_wrapper(None, self.ssl_object.do_handshake)
 
     def _ssl_io_wrapper(self, 
-                        timeout: Timeout,
-                        func: Callable, 
+                        timeout: Optional[Timeout],
+                        func: Callable[..., SSL_Fn_Return_Type], 
                         *args: Any,
-                        **kwargs: Any):
+                        **kwargs: Any) -> Optional[SSL_Fn_Return_Type]:
         
         
         blocking = timeout is None
@@ -71,7 +73,7 @@ class SSL_Connection:
         '''Send plaintext data.'''
         self._ssl_io_wrapper(None, self.ssl_object.write, data)
 
-    def recv(self, length: int, timeout: Timeout = None) -> bytes:
+    def recv(self, length: int, timeout: Optional[Timeout] = None) -> bytes:
         '''Receive SS and SSL decrypted message.
 
         Note that in non-blocking mode, to return data as soon as possible, at most one unit of SSL data is decrypted.
@@ -88,9 +90,11 @@ class SSL_Connection:
         Returns:
             Decrypted message.
         '''
-        return self._ssl_io_wrapper(timeout, 
-                                    self.ssl_object.read, 
-                                    length, None)
+        received = self._ssl_io_wrapper(timeout, 
+                                        self.ssl_object.read, 
+                                        length, None)
+        
+        return received if received else b''
 
     def close(self):
         self.connection.close()
