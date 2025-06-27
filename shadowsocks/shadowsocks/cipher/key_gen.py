@@ -1,14 +1,24 @@
 import warnings
 import hmac
 import hashlib
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Protocol
+from typing_extensions import Buffer
+from _hashlib import HASH
+
+class HashFunc(Protocol):
+    def __call__(
+        self,
+        string: Buffer = ...,
+        *,
+        usedforsecurity: bool = ...
+    ) -> HASH: ...
 
 def EVP_BytesToKey(data: bytes,
                    salt: bytes,
                    key_length: int,
                    iv_length: int,
                    round: int,
-                   hash_func: Callable[[bytes], bytes]) -> Tuple[bytes, bytes]:
+                   hash_func: HashFunc) -> Tuple[bytes, bytes]:
 
     # https://linux.die.net/man/3/evp_bytestokey
 
@@ -33,7 +43,7 @@ def EVP_BytesToKey(data: bytes,
     return key, iv
 
 def HKDF_extract(ikm: bytes, 
-                 hash_func: Callable[[bytes], bytes], 
+                 hash_func: HashFunc, 
                  salt: bytes = b''):
     # https://datatracker.ietf.org/doc/html/rfc5869#section-2.2
 
@@ -44,7 +54,7 @@ def HKDF_extract(ikm: bytes,
 
 def HKDF_expand(key: bytes, 
                 key_length: int, 
-                hash_func: Callable[[bytes], bytes], 
+                hash_func: HashFunc, 
                 info: bytes = b'') -> bytes:
     # https://datatracker.ietf.org/doc/html/rfc5869#section-2.3
     

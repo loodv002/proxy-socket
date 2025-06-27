@@ -15,11 +15,15 @@ class AEAD_CHACHA20_POLY1305(AEAD_CipherBase):
         self.cipher_parameters = cipher_parameters
 
     def _encrypt(self, data: bytes) -> bytes:
+        assert self.key is not None
+
         cipher = ChaCha20_Poly1305.new(key=self.key, nonce=self.nonce)
         ciphertext, auth_tag = cipher.encrypt_and_digest(data)
         return ciphertext + auth_tag
     
     def _decrypt(self, encrypted: bytes) -> bytes:
+        assert self.key is not None
+        
         tag_size = self.cipher_parameters.tag_size
 
         ciphertext, auth_tag = encrypted[:-tag_size], encrypted[-tag_size:]

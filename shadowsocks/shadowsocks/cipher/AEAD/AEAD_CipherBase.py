@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     # Avoid cyclic imports caused by importing type
     from ..CipherParamerters import CipherParamerters
@@ -15,13 +15,13 @@ class AEAD_CipherBase(ABC):
     def __init__(self, cipher_parameters: CipherParamerters):
         self.cipher_parameters = cipher_parameters
 
-        self.key: bytes = None
+        self.key: Optional[bytes] = None
         self.key_initiated = False
         self._nonce = bytearray(cipher_parameters.nonce_size)
 
     def init_key(self, password: str, session_salt: bytes):
         mainKey, _ = EVP_BytesToKey(
-            data = password,
+            data = password.encode(),
             salt = b'',
             round = 1,
             hash_func = md5,
